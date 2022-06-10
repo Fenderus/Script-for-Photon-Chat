@@ -8,13 +8,18 @@ using TMPro;
 public class PhotonManager : MonoBehaviourPunCallbacks
 {
 
-    public TMP_InputField inputFieldCreate;
+    [Header("Input Fields")] 
+    public TMP_InputField joinInputField;
+    public TMP_InputField createInputField;
+    public TMP_InputField nameInputField;
 
+    [Header("Panels")]
     public GameObject intro;
     public GameObject join;
     public GameObject game;
 
-    public Camera camera;
+    [Header("Components")]
+    public Camera mainCamera;
     
     // Start is called before the first frame update
     void Start()
@@ -39,9 +44,14 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     //Use a Button to Call this Function
     public void CreateRoom()
     {
+        string roomName = createInputField.text;
+        if (string.IsNullOrEmpty(roomName))
+        {
+            roomName = Random.Range(0, 9999999999999999999).ToString();
+        }
         RoomOptions roomOptions = new RoomOptions();
         roomOptions.MaxPlayers = 4;
-        PhotonNetwork.CreateRoom(inputFieldCreate.text, roomOptions, TypedLobby.Default);
+        PhotonNetwork.CreateRoom(roomName, roomOptions, TypedLobby.Default);
     }
 
     //Use a Button to Call this Function
@@ -56,10 +66,30 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         PhotonNetwork.LeaveRoom();
     }
 
+    public void Join()
+    {
+        string roomName = joinInputField.text;
+        if (string.IsNullOrEmpty(roomName))
+        {
+            JoinRandomly();
+        }
+        else
+        {
+            PhotonNetwork.JoinRoom(roomName);
+        }
+        
+    }
+
     public override void OnConnectedToMaster()
     {
+        string playerNickname = nameInputField.text;
+        if (string.IsNullOrEmpty(playerNickname))
+        {
+            playerNickname = Random.Range(0, 9999999999999999999).ToString();
+        }
+        PhotonNetwork.LocalPlayer.NickName = playerNickname;
         PhotonNetwork.JoinLobby();
-        
+
         base.OnConnectedToMaster();
     }
 
@@ -76,7 +106,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         join.SetActive(false);
         game.SetActive(true);
         
-        camera.enabled = false;
+        mainCamera.enabled = false;
         
         PhotonNetwork.Instantiate("Player", transform.position, Quaternion.identity);
         
@@ -85,7 +115,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
     public override void OnLeftRoom()
     {
-        camera.enabled = true;
+        mainCamera.enabled = true;
 
         join.SetActive(true);
         game.SetActive(false);
