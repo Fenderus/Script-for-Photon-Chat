@@ -11,24 +11,12 @@ using UnityEngine.UI;
 public class ChatManager : MonoBehaviour, IChatClientListener
 {
     private ChatClient chatClient;
-
-    public TextMeshProUGUI channelName;
-
-    public TMP_InputField plrName;
-    public TextMeshProUGUI connectionState;
+    
     public TMP_InputField msgInput;
-    public TextMeshProUGUI msgArea;
+    public TMP_Text msgArea;
 
-    public TMP_InputField[] channels;
-    
-    public TMP_InputField trymy;
+    public PhotonManager photonManager;
 
-    public GameObject intoPanel;
-    public GameObject msgPanel;
-
-    private string worldchat;
-    [SerializeField] private string userID;
-    
     // Start is called before the first frame update
     void Start()
     {
@@ -38,10 +26,6 @@ public class ChatManager : MonoBehaviour, IChatClientListener
             Debug.LogError("No AppID Provided");
             return;
         }
-
-        
-        
-        worldchat = "world";
     }
 
     // Update is called once per frame
@@ -51,20 +35,17 @@ public class ChatManager : MonoBehaviour, IChatClientListener
         {
             chatClient.Service();
         }
-        
-        
-        
     }
 
-    public void GetConnected()
+    public void ConnectToServer()
     {
         Debug.Log("Connecting");
         chatClient = new ChatClient(this);
         chatClient.Connect(PhotonNetwork.PhotonServerSettings.AppSettings.AppIdChat, PhotonNetwork.AppVersion,
-            new Photon.Chat.AuthenticationValues(plrName.text));
+            new Photon.Chat.AuthenticationValues(PhotonNetwork.LocalPlayer.NickName));
     }
 
-    public void GetDisconnected()
+    public void DisconnectFromServer()
     {
         Debug.Log("Leaving");
         chatClient.Disconnect(ChatDisconnectCause.None);
@@ -72,9 +53,19 @@ public class ChatManager : MonoBehaviour, IChatClientListener
 
     public void SendMsg()
     {
+        chatClient.PublishMessage(PhotonNetwork.CurrentRoom.Name, PhotonNetwork.LocalPlayer.NickName + ": " + msgInput.text);
+    }
 
-        chatClient.PublishMessage(worldchat, msgInput.text);
-        
+    public void Join()
+    {
+        chatClient.Subscribe(new string[] {PhotonNetwork.CurrentRoom.Name});
+        chatClient.SetOnlineStatus(ChatUserStatus.Online);
+    }
+
+    public void Leave()
+    {
+        chatClient.Unsubscribe(new string[] {PhotonNetwork.CurrentRoom.Name});
+        chatClient.SetOnlineStatus(ChatUserStatus.Offline);
     }
     
     public void DebugReturn(DebugLevel level, string message)
@@ -84,19 +75,12 @@ public class ChatManager : MonoBehaviour, IChatClientListener
 
     public void OnDisconnected()
     {
-        intoPanel.SetActive(true);
-        msgPanel.SetActive(false);
-        chatClient.Unsubscribe(new string[] {worldchat});
-        chatClient.SetOnlineStatus(ChatUserStatus.Offline);
+        
     }
 
     public void OnConnected()
     {
-        intoPanel.SetActive(false);
-        msgPanel.SetActive(true);
-        chatClient.Subscribe(new string[] {worldchat});
-        chatClient.SetOnlineStatus(ChatUserStatus.Online);
-        
+
     }
 
     public void OnChatStateChange(ChatState state)
@@ -108,7 +92,15 @@ public class ChatManager : MonoBehaviour, IChatClientListener
     {
         for (int i = 0; i < senders.Length; i++)
         {
-            msgArea.text += senders[i] + ": " + messages[i] + ", ";
+            Debug.Log(senders[i]);
+            if (string.IsNullOrEmpty(msgArea.text))
+            {
+                msgArea.text += messages[i] + ", ";
+            }
+            else
+            {
+                msgArea.text += "\r\n" + messages[i] + ", ";
+            }
         }
     }
 
@@ -119,17 +111,13 @@ public class ChatManager : MonoBehaviour, IChatClientListener
 
     public void OnSubscribed(string[] channels, bool[] results)
     {
-        foreach (var channel in channels)
-        {
-            this.chatClient.PublishMessage(channel, "joined");
-        }
-
-        connectionState.text = "Connected";
+        
     }
 
     public void OnUnsubscribed(string[] channels)
     {
         msgArea.text = "";
+        //photonManager.Leave();
     }
 
     public void OnStatusUpdate(string user, int status, bool gotMessage, object message)
